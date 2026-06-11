@@ -107,6 +107,15 @@ let isAnswering = false;
 let startTime;
 let timerInterval;
 
+function init() {
+    const lastResult = localStorage.getItem('cyber_quiz_last_result');
+    if (lastResult) {
+        showResults(JSON.parse(lastResult), true);
+    } else {
+        document.getElementById('start-screen').classList.remove('hidden');
+    }
+}
+
 function startQuiz() {
     document.getElementById('start-screen').classList.add('hidden');
     document.getElementById('result-screen').classList.add('hidden');
@@ -134,8 +143,8 @@ function stopTimer() {
     if (timerInterval) clearInterval(timerInterval);
 }
 
-function getFormattedTime() {
-    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+function getFormattedTime(ms) {
+    const elapsed = Math.floor((ms || (Date.now() - startTime)) / 1000);
     const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
     const seconds = (elapsed % 60).toString().padStart(2, '0');
     return `${minutes}:${seconds}`;
@@ -184,7 +193,7 @@ function checkAnswer(selectedIndex, btnElement) {
         if (currentQuestionIndex < questions.length) {
             loadQuestion();
         } else {
-            showResults();
+            finishQuiz();
         }
     }, 1500);
 }
@@ -196,27 +205,55 @@ function updateScore() {
     }
 }
 
-function showResults() {
+function finishQuiz() {
     stopTimer();
+    const timeTaken = Date.now() - startTime;
+    const resultData = {
+        score: score,
+        time: timeTaken,
+        date: new Date().toISOString()
+    };
+    
+    localStorage.setItem('cyber_quiz_last_result', JSON.stringify(resultData));
+    
+    let attempts = parseInt(localStorage.getItem('cyber_quiz_attempts') || '0');
+    attempts++;
+    localStorage.setItem('cyber_quiz_attempts', attempts);
+    
+    let bestScore = parseInt(localStorage.getItem('cyber_quiz_best_score') || '0');
+    if (score > bestScore) {
+        bestScore = score;
+        localStorage.setItem('cyber_quiz_best_score', bestScore);
+    }
+    
+    let bestTime = parseInt(localStorage.getItem('cyber_quiz_best_time') || '0');
+    if (bestTime === 0 || timeTaken < bestTime) {
+        bestTime = timeTaken;
+        localStorage.setItem('cyber_quiz_best_time', bestTime);
+    }
+    
+    showResults(resultData, false);
+}
+
+function showResults(data, isReload) {
+    document.getElementById('start-screen').classList.add('hidden');
     document.getElementById('quiz-screen').classList.add('hidden');
     document.getElementById('result-screen').classList.remove('hidden');
     
-    const finalScoreEl = document.getElementById('final-score');
-    finalScoreEl.innerText = `${score} / ${questions.length}`;
+    document.getElementById('final-score').innerText = `${data.score} / ${questions.length}`;
+    document.getElementById('final-time').innerText = getFormattedTime(data.time);
     
-    document.getElementById('final-time').innerText = getFormattedTime();
+    const bestScore = localStorage.getItem('cyber_quiz_best_score') || 0;
+    const bestTime = localStorage.getItem('cyber_quiz_best_time') || 0;
+    const attempts = localStorage.getItem('cyber_quiz_attempts') || 0;
     
-    const bestScoreKey = 'cyber_quiz_best_score';
-    let bestScore = localStorage.getItem(bestScoreKey) || 0;
-    
-    if (score > bestScore) {
-        bestScore = score;
-        localStorage.setItem(bestScoreKey, bestScore);
-    }
-    
-    document.getElementById('best-score').innerText = `Лучший результат: ${bestScore}`;
+    document.getElementById('best-score-val').innerText = `${bestScore} / ${questions.length}`;
+    document.getElementById('best-time-val').innerText = bestTime > 0 ? getFormattedTime(parseInt(bestTime)) : '--:--';
+    document.getElementById('attempts-count').innerText = `Пройдено раз: ${attempts}`;
 }
 
 function restartQuiz() {
     startQuiz();
 }
+
+window.onload = init;
