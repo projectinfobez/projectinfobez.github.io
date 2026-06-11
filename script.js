@@ -190,7 +190,10 @@ function checkAnswer(selectedIndex, btnElement) {
 }
 
 function updateScore() {
-    document.getElementById('score-display').innerText = `Баллы: ${score}`;
+    const scoreEl = document.getElementById('score-display');
+    if (scoreEl) {
+        scoreEl.innerText = `Баллы: ${score}`;
+    }
 }
 
 function showResults() {
